@@ -1,4 +1,3 @@
-import { tryPromise } from 'jwt-js-decode';
 import API from './API.js';
 import Router from './Router.js';
 
@@ -64,7 +63,6 @@ const Auth = {
 			name: response.name,
 		});
 	},
-
 	autoLogin: async () => {
 		if (window.PasswordCredential) {
 			const credentials = await navigator.credentials.get({ password: true });
@@ -90,6 +88,9 @@ const Auth = {
 			// Next time you login, it will prevent auto-login.
 			navigator.credentials.preventSilentAccess();
 		}
+	},
+	loginFromGoogle: (data) => {
+		console.log(data);
 	},
 	updateStatus() {
 		if (Auth.isLoggedIn && Auth.account) {
