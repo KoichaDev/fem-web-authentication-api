@@ -1,3 +1,4 @@
+import { tryPromise } from 'jwt-js-decode';
 import API from './API.js';
 import Router from './Router.js';
 
@@ -22,10 +23,15 @@ const Auth = {
 		if (window.PasswordCredential && userPayload.password) {
 			const credentials = new PasswordCredential({
 				id: userPayload.email,
-				password: userPayload.password,
 				name: userPayload.name,
+				password: userPayload.password,
 			});
-			navigator.credentials.store(credentials);
+
+			try {
+				navigator.credentials.store(credentials);
+			} catch (error) {
+				console.error('error: ', error);
+			}
 		}
 	},
 	register: async (event) => {
@@ -42,7 +48,9 @@ const Auth = {
 		Auth.postLogin(response, userPayload);
 	},
 	login: async (event) => {
-		event.preventDefault();
+		if (event) {
+			event.preventDefault();
+		}
 
 		const credentialsPayload = {
 			email: document.getElementById('login_email').value,
@@ -55,6 +63,21 @@ const Auth = {
 			...credentialsPayload,
 			name: response.name,
 		});
+	},
+
+	autoLogin: async () => {
+		if (window.PasswordCredential) {
+			const credentials = await navigator.credentials.get({ password: true });
+
+			// ! Remember, this solution is not going to work on Safari by using auto-retrieval when page loads
+			// ! It only going to work on Chrome-based browser only
+			document.getElementById('login_email').value = credentials.id;
+			document.getElementById('login_password').value = credentials.password;
+
+			Auth.login();
+
+			console.log(credentials);
+		}
 	},
 	logout() {
 		Auth.isLoggedIn = false;
@@ -81,6 +104,7 @@ const Auth = {
 	},
 	init: () => {},
 };
+Auth.autoLogin();
 Auth.updateStatus();
 
 export default Auth;
