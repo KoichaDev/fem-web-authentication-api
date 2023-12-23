@@ -13,6 +13,20 @@ const Auth = {
 		} else {
 			alert(response.message);
 		}
+
+		// Credential Management API storage
+		// ! This is false-positive, because in Safari browser, we do have navigator.credentials, but not for what we want.
+		// ! Just for WebAuthn
+		// ! if (navigator.credentials) {...}
+
+		if (window.PasswordCredential && userPayload.password) {
+			const credentials = new PasswordCredential({
+				id: userPayload.email,
+				password: userPayload.password,
+				name: userPayload.name,
+			});
+			navigator.credentials.store(credentials);
+		}
 	},
 	register: async (event) => {
 		event.preventDefault();
@@ -25,10 +39,7 @@ const Auth = {
 
 		const response = await API.register(userPayload);
 
-		Auth.postLogin(response, {
-			name: userPayload.name,
-			email: userPayload.email,
-		});
+		Auth.postLogin(response, userPayload);
 	},
 	login: async (event) => {
 		event.preventDefault();
@@ -51,6 +62,11 @@ const Auth = {
 		Auth.updateStatus();
 
 		Router.go('/');
+
+		if (window.PasswordCredential) {
+			// Next time you login, it will prevent auto-login.
+			navigator.credentials.preventSilentAccess();
+		}
 	},
 	updateStatus() {
 		if (Auth.isLoggedIn && Auth.account) {
