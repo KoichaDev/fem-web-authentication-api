@@ -6,6 +6,9 @@ const API = {
 	register: async (userPayload) => {
 		return await API.makePostRequest(API.endpoint + 'register', userPayload);
 	},
+	loginFromGoogle: async (credentialPayload) => {
+		return await API.makePostRequest(API.endpoint + 'login-google', credentialPayload);
+	},
 	// ADD HERE ALL THE OTHER API FUNCTIONS
 	makePostRequest: async (url, data) => {
 		const response = await fetch(url, {

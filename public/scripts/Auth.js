@@ -67,14 +67,16 @@ const Auth = {
 		if (window.PasswordCredential) {
 			const credentials = await navigator.credentials.get({ password: true });
 
-			// ! Remember, this solution is not going to work on Safari by using auto-retrieval when page loads
-			// ! It only going to work on Chrome-based browser only
-			document.getElementById('login_email').value = credentials.id;
-			document.getElementById('login_password').value = credentials.password;
+			if (credentials) {
+				// ! Remember, this solution is not going to work on Safari by using auto-retrieval when page loads
+				// ! It only going to work on Chrome-based browser only
+				document.getElementById('login_email').value = credentials.id;
+				document.getElementById('login_password').value = credentials.password;
 
-			Auth.login();
+				Auth.login();
 
-			console.log(credentials);
+				console.log(credentials);
+			}
 		}
 	},
 	logout() {
@@ -89,8 +91,13 @@ const Auth = {
 			navigator.credentials.preventSilentAccess();
 		}
 	},
-	loginFromGoogle: (data) => {
-		console.log(data);
+	loginFromGoogle: async (dataPayload) => {
+		const response = await API.loginFromGoogle(dataPayload);
+
+		Auth.postLogin(response, {
+			name: response.name,
+			email: response.email,
+		});
 	},
 	updateStatus() {
 		if (Auth.isLoggedIn && Auth.account) {

@@ -39,6 +39,36 @@ function findUser(email) {
 }
 
 // ADD HERE THE REST OF THE ENDPOINTS
+app.post('/auth/login-google', (req, res) => {
+	// The credential is coming from the Google settings data property
+	let jwt = jwtJsDecode.decode(req.body.credential);
+
+	let user = {
+		email: jwt.payload.email,
+		name: jwt.payload.given_name + ' ' + jwt.payload.family_name,
+		password: null,
+	};
+
+	const userFound = findUser(user.email);
+
+	if (userFound) {
+		user.federated = {
+			google: jwt.payload.aud,
+		};
+		db.write();
+		res.send({ ok: true, name: user.name, email: user.email });
+	} else {
+		db.data.users.push({
+			...user,
+			federated: {
+				google: jwt.payload.aud,
+			},
+		});
+
+		db.write();
+		res.send({ ok: true, name: user.name, email: user.email });
+	}
+});
 
 app.post('/auth/login', (req, res) => {
 	const userFound = findUser(req.body.email);
