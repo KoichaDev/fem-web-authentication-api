@@ -45,7 +45,7 @@ app.post('/auth/auth-options', (req, res) => {
 		res.send({
 			password: foundUser.password !== false,
 			google: foundUser.federated && foundUser.federated.google,
-			webAuthn: foundUser.webAuthn,
+			webAuthn: foundUser.webauthn,
 		});
 	} else {
 		res.send({ password: true });

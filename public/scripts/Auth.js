@@ -46,6 +46,28 @@ const Auth = {
 
 		Auth.postLogin(response, userPayload);
 	},
+
+	// This code is the flow from the WebAuthn on the slide 66 https://firtman.github.io/authentication/slides.pdf
+	addWebAuthn: async () => {
+		// 1. Waiting for the server to send us all that information
+		const serverOptions = await API.webAuthn.registrationOptions();
+
+		serverOptions.authenticatorSelection.residentKey = 'required';
+		serverOptions.authenticatorSelection.requireResidentKey = true;
+		serverOptions.extensions = {
+			credProps: true,
+		};
+
+		// 2. We need to send the "options" object back to the server to verify,
+		const authResponse = await SimpleWebAuthnBrowser.startRegistration(serverOptions);
+		const verificationResponse = await API.webAuthn.registrationVerification(authResponse);
+
+		if (verificationResponse.ok) {
+			alert('You can now login with WebAuthn');
+		} else {
+			alert(verificationResponse.message);
+		}
+	},
 	login: async (event) => {
 		if (event) {
 			event.preventDefault();
