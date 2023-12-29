@@ -68,6 +68,19 @@ const Auth = {
 			alert(verificationResponse.message);
 		}
 	},
+	webAuthnLogin: async () => {
+		const email = document.getElementById('login_email').value;
+
+		const options = await API.webAuthn.loginOptions(email);
+		const loginResponse = await SimpleWebAuthnBrowser.startAuthentication(options);
+		const verificationResponse = await API.webAuthn.loginVerification(email, loginResponse);
+
+		if (verificationResponse.ok) {
+			Auth.postLogin(verificationResponse, verificationResponse.user);
+		} else {
+			alert(verificationResponse.message);
+		}
+	},
 	login: async (event) => {
 		if (event) {
 			event.preventDefault();
@@ -107,7 +120,7 @@ const Auth = {
 			document.getElementById('login_section_password').hidden = false;
 		}
 
-		if (response.webauthn) {
+		if (response.webAuthn) {
 			document.getElementById('login_section_webauthn').hidden = false;
 		}
 	},

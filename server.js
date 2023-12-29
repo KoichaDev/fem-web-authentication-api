@@ -242,6 +242,89 @@ app.post('/auth/webauth-registration-verification', async (req, res) => {
 	res.send({ ok: true });
 });
 
+app.post('/auth/webauth-login-options', (req, res) => {
+	const user = findUser(req.body.email);
+	// if (user==null) {
+	//     res.sendStatus(404);
+	//     return;
+	// }
+	const options = {
+		timeout: 60000,
+		allowCredentials: [],
+		devices:
+			user && user.devices
+				? user.devices.map((dev) => ({
+						id: dev.credentialID,
+						type: 'public-key',
+						transports: dev.transports,
+				  }))
+				: [],
+		userVerification: 'required',
+		rpID,
+	};
+	const loginOpts = SimpleWebAuthnServer.generateAuthenticationOptions(options);
+	if (user) user.currentChallenge = loginOpts.challenge;
+	res.send(loginOpts);
+});
+
+app.post('/auth/webauth-login-verification', async (req, res) => {
+	const data = req.body.data;
+	const user = findUser(req.body.email);
+	if (user == null) {
+		res.sendStatus(400).send({ ok: false });
+		return;
+	}
+
+	const expectedChallenge = user.currentChallenge;
+
+	let dbAuthenticator;
+	const bodyCredIDBuffer = base64url.toBuffer(data.rawId);
+
+	for (const dev of user.devices) {
+		const currentCredential = Buffer(dev.credentialID.data);
+		if (bodyCredIDBuffer.equals(currentCredential)) {
+			dbAuthenticator = dev;
+			break;
+		}
+	}
+
+	if (!dbAuthenticator) {
+		return res.status(400).send({ ok: false, message: 'Authenticator is not registered with this site' });
+	}
+
+	let verification;
+	try {
+		const options = {
+			credential: data,
+			expectedChallenge: `${expectedChallenge}`,
+			expectedOrigin,
+			expectedRPID: rpID,
+			authenticator: {
+				...dbAuthenticator,
+				credentialPublicKey: new Buffer(dbAuthenticator.credentialPublicKey.data), // Re-convert to Buffer from JSON
+			},
+			requireUserVerification: true,
+		};
+		verification = await SimpleWebAuthnServer.verifyAuthenticationResponse(options);
+	} catch (error) {
+		return res.status(400).send({ ok: false, message: error.toString() });
+	}
+
+	const { verified, authenticationInfo } = verification;
+
+	if (verified) {
+		dbAuthenticator.counter = authenticationInfo.newCounter;
+	}
+
+	res.send({
+		ok: true,
+		user: {
+			name: user.name,
+			email: user.email,
+		},
+	});
+});
+
 app.get('*', (req, res) => {
 	res.sendFile(__dirname + 'public/index.html');
 });
