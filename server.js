@@ -137,6 +137,111 @@ app.post('/auth/register', (req, res) => {
 	}
 });
 
+// WEBAUTHN ENDPOINTS
+
+app.post('/auth/webauth-registration-options', (req, res) => {
+	const user = findUser(req.body.email);
+
+	// RP =  Reliant Party (which is us!)
+	const options = {
+		rpName: 'Coffee Masters',
+		rpID,
+		userID: user.email,
+		userName: user.name,
+		timeout: 60000, // How long the user will finish the operation of steps attestation/authentication
+		attestationType: 'none',
+
+		/**
+		 * Passing in a user's list of already-registered authenticator IDs here prevents users from
+		 * registering the same device multiple times. The authenticator will simply throw an error in
+		 * the browser if it's asked to perform registration when one of these ID's already resides
+		 * on it.
+		 */
+		excludeCredentials: user.devices
+			? user.devices.map((dev) => ({
+					id: dev.credentialID,
+					type: 'public-key',
+					transports: dev.transports,
+			  }))
+			: [],
+
+		// This settings is default in the browser. You can remove the authenticatorSelection object if it's desirable
+		authenticatorSelection: {
+			userVerification: 'required',
+			residentKey: 'required',
+		},
+		/**
+		 * The two most common algorithms: ES256, and RS256
+		 */
+		supportedAlgorithmIDs: [-7, -257],
+	};
+
+	/**
+	 * The server needs to temporarily remember this value for verification, so don't lose it until
+	 * after you verify an authenticator response.
+	 */
+	const regOptions = SimpleWebAuthnServer.generateRegistrationOptions(options);
+	// ! this is for verification to avoid security issues, and we want to save it to the database
+	user.currentChallenge = regOptions.challenge;
+	db.write();
+
+	res.send(regOptions);
+});
+
+// after the user has clicked on the end-point /auth/webauth-registration-options
+// then we want to move to this end-point, which we need to verify that everything looks OK, and no one has changed
+// the data, no man in the middle attack has added, or changed the user information
+app.post('/auth/webauth-registration-verification', async (req, res) => {
+	const user = findUser(req.body.user.email);
+	const data = req.body.data;
+
+	const expectedChallenge = user.currentChallenge;
+
+	let verification;
+	try {
+		const options = {
+			credential: data,
+			expectedChallenge: `${expectedChallenge}`,
+			expectedOrigin,
+			expectedRPID: rpID,
+			requireUserVerification: true,
+		};
+
+		// here we need to verify the challenge after the end-point /auth/webauth-registration-options has triggeredq
+		verification = await SimpleWebAuthnServer.verifyRegistrationResponse(options);
+	} catch (error) {
+		console.log(error);
+		return res.status(400).send({ error: error.toString() });
+	}
+
+	const { verified, registrationInfo } = verification;
+
+	if (verified && registrationInfo) {
+		const { credentialPublicKey, credentialID, counter } = registrationInfo;
+
+		const existingDevice = user.devices
+			? user.devices.find((device) => new Buffer(device.credentialID.data).equals(credentialID))
+			: false;
+
+		if (!existingDevice) {
+			const newDevice = {
+				credentialPublicKey,
+				credentialID,
+				counter,
+				transports: data.response.transports,
+			};
+			if (user.devices == undefined) {
+				user.devices = [];
+			}
+			user.webauthn = true;
+			user.devices.push(newDevice);
+			db.write();
+		}
+	}
+
+	res.send({ ok: true });
+});
+
 app.get('*', (req, res) => {
 	res.sendFile(__dirname + 'public/index.html');
 });
