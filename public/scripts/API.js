@@ -3,6 +3,9 @@ const API = {
 	login: async (userPayload) => {
 		return await API.makePostRequest(API.endpoint + 'login', userPayload);
 	},
+	checkAuthOptions: async (userPayload) => {
+		return await API.makePostRequest(API.endpoint + 'auth-options', userPayload);
+	},
 	register: async (userPayload) => {
 		return await API.makePostRequest(API.endpoint + 'register', userPayload);
 	},

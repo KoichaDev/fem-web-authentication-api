@@ -38,6 +38,20 @@ function findUser(email) {
 	return results[0];
 }
 
+app.post('/auth/auth-options', (req, res) => {
+	const foundUser = findUser(req.body.email);
+
+	if (foundUser) {
+		res.send({
+			password: foundUser.password !== false,
+			google: foundUser.federated && foundUser.federated.google,
+			webAuthn: foundUser.webAuthn,
+		});
+	} else {
+		res.send({ password: true });
+	}
+});
+
 // ADD HERE THE REST OF THE ENDPOINTS
 app.post('/auth/login-google', (req, res) => {
 	// The credential is coming from the Google settings data property

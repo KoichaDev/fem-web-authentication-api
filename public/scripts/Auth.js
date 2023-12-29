@@ -51,17 +51,43 @@ const Auth = {
 			event.preventDefault();
 		}
 
-		const credentialsPayload = {
+		if (Auth.loginStep === 1) {
+			// We need to ask the server which options we have to log in the user
+			// We have Google Password, and also Face ID, so then we can render different parts of the multi-step 2
+			// based on what the server says
+
+			Auth.checkAuthOptions();
+		} else {
+			// Multi-Step 2
+			const credentialsPayload = {
+				email: document.getElementById('login_email').value,
+				password: document.getElementById('login_password').value,
+			};
+
+			const response = await API.login(credentialsPayload);
+
+			Auth.postLogin(response, {
+				...credentialsPayload,
+				name: response.name,
+			});
+		}
+	},
+	checkAuthOptions: async () => {
+		// TODO validate every entry before sending the code into production
+
+		const response = await API.checkAuthOptions({
 			email: document.getElementById('login_email').value,
-			password: document.getElementById('login_password').value,
-		};
-
-		const response = await API.login(credentialsPayload);
-
-		Auth.postLogin(response, {
-			...credentialsPayload,
-			name: response.name,
 		});
+
+		Auth.loginStep = 2;
+
+		if (response.password) {
+			document.getElementById('login_section_password').hidden = false;
+		}
+
+		if (response.webauthn) {
+			document.getElementById('login_section_webauthn').hidden = false;
+		}
 	},
 	autoLogin: async () => {
 		if (window.PasswordCredential) {
@@ -110,7 +136,12 @@ const Auth = {
 			document.querySelectorAll('.logged_in').forEach((e) => (e.style.display = 'none'));
 		}
 	},
-	init: () => {},
+
+	loginStep: 1,
+	init: () => {
+		document.getElementById('login_section_password').hidden = true;
+		document.getElementById('login_section_webauthn').hidden = true;
+	},
 };
 Auth.autoLogin();
 Auth.updateStatus();

@@ -157,11 +157,19 @@
 							autocomplete="email"
 							required />
 
-						<label for="login_password">Password</label>
-						<input
-							type="password"
-							id="login_password"
-							autocomplete="current-password" />
+						<section
+							id="login_section_password"
+							hidden>
+							<label for="login_password">Password</label>
+							<input
+								type="password"
+								id="login_password"
+								autocomplete="current-password" />
+						</section>
+
+						<section
+							id="login_section_webauthn"
+							hidden></section>
 					</fieldset>
 					<button>Continue</button>
 
